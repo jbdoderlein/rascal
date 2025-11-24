@@ -134,4 +134,15 @@ public class RascalDebugEventTrigger extends AbstractInterpreterEventTrigger {
 
     @Override
     public void fireSuspendEvent(RascalEvent.Detail detail) {}
+
+    @Override
+    public void fireSuspendByFrameRestartEndEvent(){
+        suspendedState.suspended();
+
+        StoppedEventArguments stoppedEventArguments = new StoppedEventArguments();
+        stoppedEventArguments.setThreadId(RascalDebugAdapter.mainThreadID);
+        stoppedEventArguments.setDescription("Paused after frame restart.");
+        stoppedEventArguments.setReason("restart");
+        client.stopped(stoppedEventArguments);
+    }
 }

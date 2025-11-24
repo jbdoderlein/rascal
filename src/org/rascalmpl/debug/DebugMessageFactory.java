@@ -44,6 +44,10 @@ public class DebugMessageFactory {
 	public static IDebugMessage requestTermination() {
 		return new DebugMessage(IDebugMessage.Action.TERMINATE, IDebugMessage.Subject.INTERPRETER, IDebugMessage.Detail.UNKNOWN);
 	}
+
+	public static IDebugMessage requestFrameRestart(IRascalFrame frame) {
+		return new DebugMessage(IDebugMessage.Action.RESTARTFRAME, IDebugMessage.Subject.FRAME, IDebugMessage.Detail.UNKNOWN, frame);
+	}
 	
 	/*
 	 * Breakpoint requests.

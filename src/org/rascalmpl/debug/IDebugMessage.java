@@ -22,7 +22,7 @@ public interface IDebugMessage {
 	 * <code>UNKNOWN</code> if not provided.
 	 */
 	enum Action {
-		UNKNOWN, SET, DELETE, TERMINATE, SUSPEND, RESUME
+		UNKNOWN, SET, DELETE, TERMINATE, SUSPEND, RESUME, RESTARTFRAME
 	}
 
 	/**
@@ -30,7 +30,7 @@ public interface IDebugMessage {
 	 * not provided.
 	 */
 	enum Subject {
-		UNKNOWN, BREAKPOINT, INTERPRETER
+		UNKNOWN, BREAKPOINT, INTERPRETER, FRAME
 	}
 
 	/**

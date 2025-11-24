@@ -221,6 +221,16 @@ public final class DebugHandler implements IDebugHandler {
 	public void processMessage(IDebugMessage message) {
 	  switch (message.getSubject()) {
 
+	  case FRAME:
+	    switch (message.getAction()) {
+	    case RESTARTFRAME:
+	      IRascalFrame frame = (IRascalFrame) message.getPayload();
+		  // Reset here the correct frame position
+	      getEventTrigger().fireSuspendByFrameRestartEndEvent();
+	      break;
+	    }
+	    break;
+
 	  case BREAKPOINT:
 	    ISourceLocation breakpointLocation = (ISourceLocation) message.getPayload();
 

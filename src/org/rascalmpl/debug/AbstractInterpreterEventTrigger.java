@@ -144,6 +144,14 @@ public abstract class AbstractInterpreterEventTrigger implements IRascalEventTri
 	}
 
 	/**
+	 * Fires a suspend event for this debug element with detail
+	 * <code>RascalEvent.Detail.RESTART_FRAME</code>.
+	 */
+	public void fireSuspendByFrameRestartEndEvent(){
+		fireSuspendEvent(RascalEvent.Detail.RESTART_FRAME);
+	}
+
+	/**
 	 * Fires a idle event for this interpreter. E.g. this happens when the REPL
 	 * is waiting for another command input.
 	 */

@@ -143,6 +143,7 @@ public class RascalDebugAdapter implements IDebugProtocolServer {
             capabilities.setSupportsRestartFrame(false);
             capabilities.setSupportsSetVariable(false);
             capabilities.setSupportsRestartRequest(false);
+            capabilities.setSupportsRestartFrame(true);
 
             return capabilities;
         }, ownExecutor);
@@ -549,5 +550,27 @@ public class RascalDebugAdapter implements IDebugProtocolServer {
         }, ownExecutor);
     }
     
+    @Override
+	public CompletableFuture<Void> restartFrame(RestartFrameArguments args) {
+        if(suspendedState.isSuspended()) {
+            int frameId = args.getFrameId();
+            IRascalFrame[] stackFrames = suspendedState.getCurrentStackFrames();
+            if(frameId >= 0 && frameId < stackFrames.length) {
+                IRascalFrame frameToRestart = stackFrames[frameId];
+                // This is where we need to make the change since in DebugHandler and EventTrigger we do not have access to the evaluator
+                synchronized(evaluator) {
+                    // First we need to discard all frames above the frame to restart (to get to the caller of the frame to restart)
+                    while(evaluator.getStackTrace().size() > frameId+1) {
+                        evaluator.unwind(evaluator.getCurrentEnvt().getCallerScope());
+                    }
+                    ISourceLocation callerLocation = evaluator.getCurrentEnvt().getCallerLocation();
+                    //evaluator.getCurrentEnvt().setCurrentLocation(callerLocation);
+                }
+
+                debugHandler.processMessage(DebugMessageFactory.requestFrameRestart(frameToRestart));
+            }
+        }
+		return CompletableFuture.completedFuture(null);
+	}
 }
 
