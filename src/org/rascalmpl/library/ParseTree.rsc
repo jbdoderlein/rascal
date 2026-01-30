@@ -570,6 +570,25 @@ Tree firstAmbiguity(type[Tree] begin, loc input)
   = firstAmbiguityFinder(begin)(input, input);
 
 @javaClass{org.rascalmpl.library.Prelude}
+@synopsis{Get the parsing context at a given position in the input, useful for code completion.}
+@description{
+This function attempts to parse the input and returns information about what the parser expected
+at the given position. This is useful for implementing code completion features.
+
+When parsing fails (which is expected for incomplete input), the function captures what the parser
+was expecting at the error location. The returned string contains debugging information about:
+* Non-terminals that could not be expanded (unexpandable nodes)
+* Terminals/literals that were expected but not found (unmatchable leaf nodes)  
+* Terminals expected in the middle of a production (unmatchable mid-production nodes)
+* Nodes that matched but were filtered out
+
+This is an experimental feature for building code completion. The return type will likely
+change in the future to a more structured format.
+}
+@experimental
+java str getParseContext(type[&T<:Tree] begin, str input);
+
+@javaClass{org.rascalmpl.library.Prelude}
 @synopsis{Generate a parser and store it in serialized form for later reuse.}
 @description{
 The stored parsers would be able to be recovered later using ((loadParsers)).

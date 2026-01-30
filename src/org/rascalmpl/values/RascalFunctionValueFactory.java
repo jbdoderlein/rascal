@@ -368,6 +368,126 @@ public class RascalFunctionValueFactory extends RascalValueFactory {
     }
 
     /**
+     * Get the parsing context at the point where parsing fails.
+     * This is useful for code completion - it tells you what the parser expected.
+     */
+    @Override
+    public IString getParseContext(IValue reifiedGrammar, IString input) {
+        IValueFactory vf = ctx.getValueFactory();
+        
+        Class<IGTD<IConstructor, ITree, ISourceLocation>> parser = getParserClass((IMap) ((IConstructor) reifiedGrammar).get("definitions"));
+        IConstructor startSort = (IConstructor) ((IConstructor) reifiedGrammar).get("symbol");
+
+        checkPreconditions(startSort, reifiedGrammar.getType());
+
+        String methodName = getParserMethodName(startSort);
+        if (methodName == null) {
+            methodName = generator.getParserMethodName(startSort);
+        }
+
+        try {
+            IGTD<IConstructor, ITree, ISourceLocation> parserInstance = parser.getDeclaredConstructor().newInstance();
+            
+            // Try to parse - we expect this to fail for incomplete input
+            parserInstance.parse(
+                methodName, 
+                URIUtil.rootLocation("completion").getURI(), 
+                input.getValue().toCharArray(),
+                INodeFlattener.UNLIMITED_AMB_DEPTH,
+                new NoActionExecutor(),
+                new DefaultNodeFlattener<>(),
+                new UPTRNodeFactory(false),
+                (IRecoverer<IConstructor>) null,
+                (IDebugListener<IConstructor>) null
+            );
+            
+            // If we get here, parsing succeeded - no context to extract
+            return vf.string("Parse succeeded - no completion context needed");
+            
+        } catch (ParseError pe) {
+            // This is the expected case - extract completion context from the error
+            StringBuilder sb = new StringBuilder();
+            sb.append("=== Parse Context for Completion ===\n");
+            sb.append("Error location: offset=").append(pe.getOffset());
+            sb.append(", line=").append(pe.getBeginLine());
+            sb.append(", column=").append(pe.getBeginColumn()).append("\n\n");
+            
+            // Unexpandable nodes - non-terminals that could appear here
+            if (pe.getUnexpandableNodes() != null && !pe.getUnexpandableNodes().isEmpty()) {
+                sb.append("--- Unexpandable Nodes (non-terminals expected) ---\n");
+                var unexpandable = pe.getUnexpandableNodes();
+                for (int i = 0; i < unexpandable.getSize(); i++) {
+                    var node = unexpandable.get(i);
+                    sb.append("  - Name: ").append(node.getName());
+                    sb.append(", StartLocation: ").append(node.getStartLocation());
+                    sb.append(", Dot: ").append(node.getDot());
+                    sb.append(", IsEndNode: ").append(node.isEndNode());
+                    if (node.getParentProduction() != null) {
+                        sb.append(", Production: ").append(node.getParentProduction());
+                    }
+                    sb.append("\n");
+                }
+                sb.append("\n");
+            }
+            
+            // Unmatchable leaf nodes - terminals that were expected
+            if (pe.getUnmatchableLeafNodes() != null && !pe.getUnmatchableLeafNodes().isEmpty()) {
+                sb.append("--- Unmatchable Leaf Nodes (terminals expected) ---\n");
+                var unmatchable = pe.getUnmatchableLeafNodes();
+                for (int i = 0; i < unmatchable.getSize(); i++) {
+                    var node = unmatchable.get(i);
+                    sb.append("  - Name: ").append(node.getName());
+                    sb.append(", StartLocation: ").append(node.getStartLocation());
+                    if (node.getParentProduction() != null) {
+                        sb.append(", Production: ").append(node.getParentProduction());
+                    }
+                    sb.append("\n");
+                }
+                sb.append("\n");
+            }
+            
+            // Unmatchable mid-production nodes - terminals expected mid-production
+            if (pe.getUnmatchableMidProductionNodes() != null && !pe.getUnmatchableMidProductionNodes().isEmpty()) {
+                sb.append("--- Unmatchable Mid-Production Nodes ---\n");
+                var midProd = pe.getUnmatchableMidProductionNodes();
+                for (int i = 0; i < midProd.getSize(); i++) {
+                    var node = midProd.getSecond(i);
+                    var predecessors = midProd.getFirst(i);
+                    sb.append("  - Expected: ").append(node.getName());
+                    sb.append(", StartLocation: ").append(node.getStartLocation());
+                    if (node.getParentProduction() != null) {
+                        sb.append(", Production: ").append(node.getParentProduction());
+                    }
+                    sb.append(", Predecessors: ").append(predecessors.size());
+                    sb.append("\n");
+                }
+                sb.append("\n");
+            }
+            
+            // Filtered nodes
+            if (pe.getFilteredNodes() != null && !pe.getFilteredNodes().isEmpty()) {
+                sb.append("--- Filtered Nodes ---\n");
+                var filtered = pe.getFilteredNodes();
+                for (int i = 0; i < filtered.getSize(); i++) {
+                    var node = filtered.getFirst(i);
+                    sb.append("  - Name: ").append(node.getName());
+                    sb.append(", StartLocation: ").append(node.getStartLocation());
+                    sb.append("\n");
+                }
+                sb.append("\n");
+            }
+            
+            return vf.string(sb.toString());
+            
+        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException 
+                | InvocationTargetException | NoSuchMethodException | SecurityException e) {
+            throw new ImplementationError("Could not instantiate parser", e);
+        } catch (UndeclaredNonTerminalException e) {
+            throw new UndeclaredNonTerminal(e.getName(), e.getClassName(), ctx.getCurrentAST().getLocation());
+        }
+    }
+
+    /**
      * This function mimicks `parsers(#start[Module]) inside lang::rascal::\syntax::Rascal.
      * so it produces a parse function for the Rascal language, where non-terminal is the
      * first parameter as a reified type and a str (IString) is the second parameter.

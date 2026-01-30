@@ -2464,6 +2464,15 @@ public class Prelude {
 			throw RuntimeExceptionFactory.io(e.getMessage());
 		}
 	}
+
+	/**
+	 * Get the parsing context at a given position in the input.
+	 * This is useful for code completion - it tells you what the parser expected
+	 * when it encountered an error.
+	 */
+	public IString getParseContext(IValue reifiedGrammar, IString input) {
+		return rascalValues.getParseContext(reifiedGrammar, input);
+	}
 	
 	// REFLECT -- copy in {@link PreludeCompiled}
 	protected IConstructor makeConstructor(TypeStore store, Type returnType, String name, IValue ...args) {

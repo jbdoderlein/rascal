@@ -25,6 +25,7 @@ import io.usethesource.vallang.IList;
 import io.usethesource.vallang.IMap;
 import io.usethesource.vallang.ISet;
 import io.usethesource.vallang.ISourceLocation;
+import io.usethesource.vallang.IString;
 import io.usethesource.vallang.IValue;
 import io.usethesource.vallang.IValueFactory;
 import io.usethesource.vallang.type.Type;
@@ -149,5 +150,13 @@ public interface IRascalValueFactory extends IValueFactory {
 	default IFunction loadParser(IValue reifiedType, ISourceLocation saveLocation, IBool allowAmbiguity, IInteger maxAmbDepth, IBool allowRecovery,
 			IInteger maxRecoveryAttempts, IInteger maxRecoveryTokens, IBool hasSideEffects, IBool firstAmbiguity, ISet filters) throws IOException, ClassNotFoundException {
 		throw new UnsupportedOperationException("This Rascal value factory does not support a parser generator that can restore parsers from disk." + getClass());
+	}
+
+	/**
+	 * Get the parsing context at a given position in the input. This is useful for code completion.
+	 * Attempts to parse and returns information about what the parser expected when it failed.
+	 */
+	default IString getParseContext(IValue reifiedGrammar, IString input) {
+		throw new UnsupportedOperationException("This Rascal value factory does not support getParseContext:" + getClass());
 	}
 }
