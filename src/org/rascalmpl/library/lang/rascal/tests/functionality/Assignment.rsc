@@ -94,6 +94,12 @@ test bool testADT31() { D d = intfield(2); d.i += 3; return d == intfield(5); }
 test bool testADT32() { D d = intfield(5); d.i -= 3; return d == intfield(2); }
 test bool testADT33() { D d = intfield(5); d.i *= 3; return d == intfield(15); }
 test bool testADT34() { D d = intfield(6); d.i /= 3; return d == intfield(2); }
+
+data PD[&T] = plistfield(list[&T] elems);
+
+test bool testParameterizedADT1() { PD[int] d = plistfield([]); d.elems = [1]; return d == plistfield([1]); }
+test bool testParameterizedADT2() { PD[int] d = plistfield([]); d.elems += [1]; return d == plistfield([1]); }
+test bool testParameterizedADT3() { PD[int] d = plistfield([]); return d[elems = [1]] == plistfield([1]); }
   	
 data F = f() | f(int n) | g(int n) | deep(F f);
  

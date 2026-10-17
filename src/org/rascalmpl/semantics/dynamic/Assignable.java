@@ -14,6 +14,7 @@
 *******************************************************************************/
 package org.rascalmpl.semantics.dynamic;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -274,10 +275,13 @@ public abstract class Assignable extends org.rascalmpl.ast.Assignable {
 
 				if (node.hasField(label)) {
 					int index = node.getFieldIndex(label);
+					Type declared = cons.getUninstantiatedConstructorType();
+					Map<Type, Type> bindings = new HashMap<>();
+					declared.getAbstractDataType().match(receiver.getStaticType(), bindings);
+					Type fieldType = declared.getFieldType(index).instantiate(bindings);
 
-					if (!__eval.__getValue().getStaticType().isSubtypeOf(
-							node.getFieldType(index))) {
-						throw new UnexpectedType(node.getFieldType(index),
+					if (!__eval.__getValue().getStaticType().isSubtypeOf(fieldType)) {
+						throw new UnexpectedType(fieldType,
 								__eval.__getValue().getStaticType(), this);
 					}
 					__eval.__setValue(__eval.newResult(cons.get(index), __eval
