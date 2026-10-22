@@ -16,6 +16,7 @@ package org.rascalmpl.interpreter.result;
 
 import static org.rascalmpl.interpreter.result.ResultFactory.makeResult;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -255,7 +256,10 @@ public class ConstructorResult extends NodeResult {
 		} else {
 		    // normal field
 			int index = nodeType.getFieldIndex(name);
-			Type fieldType = nodeType.getFieldType(index);
+			Type declared = getValue().getUninstantiatedConstructorType();
+			Map<Type, Type> bindings = new HashMap<>();
+			declared.getAbstractDataType().match(getStaticType(), bindings);
+			Type fieldType = declared.getFieldType(index).instantiate(bindings);
 			if (!repl.getStaticType().isSubtypeOf(fieldType)) {
 				throw new UnexpectedType(fieldType, repl.getStaticType(),
 						ctx.getCurrentAST());
