@@ -774,7 +774,7 @@ map[AType,set[AType]] collectNeededDefs(AType t){
 
     adt_constructors1 = uncloseTypeParams(adt_constructors);
     my_definitions =
-        ( adt1 : syntaxRole == dataSyntax() ? adt_constructors1[adt1] : (my_grammar_rules[adt1]? ? {aprod(my_grammar_rules[adt1])} : {})
+        ( adt1 : syntaxRole == dataSyntax() ? (adt_constructors1[adt1] ? {}) : (my_grammar_rules[adt1]? ? {aprod(my_grammar_rules[adt1])} : {})
         | /adt:aadt(str _, list[AType] _, SyntaxRole syntaxRole) := base_t,
           adt1 := unset(uninstantiate(adt), "alabel")
 

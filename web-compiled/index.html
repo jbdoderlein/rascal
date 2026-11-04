@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Compiled Rascal in the Browser</title>
+    <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
+    <style>
+      body { margin: 0; padding: 16px; background: #1e1e1e; color: #ddd; font: 14px/1.4 monospace; }
+      button { font: inherit; padding: 4px 12px; }
+      #out { white-space: pre-wrap; word-break: break-word; margin-top: 12px; }
+      .note { color: #888; }
+    </style>
+  </head>
+  <body>
+    <div>Rascal modules compiled to Java, running under CheerpJ on the slim runtime (rascal-runtime.jar).</div>
+    <select id="module"><option>Demo</option><option>Features</option></select>
+    <button id="run" disabled>Run main()</button>
+    <div id="out"><span class="note">Loading CheerpJ and rascal-runtime.jar...</span>&#10;</div>
+    <script type="module">
+      const out = document.getElementById("out");
+      const button = document.getElementById("run");
+      const print = (text, cls) => {
+        const span = document.createElement("span");
+        if (cls) span.className = cls;
+        span.textContent = text;
+        out.appendChild(span);
+      };
+
+      // rascal.jar is built for Java 11 (CheerpJ defaults to Java 8)
+      await cheerpjInit({ version: 11 });
+      // Files served by the web server are mounted under /app/
+      // rascal-runtime.jar (made by slim-jar.py) provides the runtime, demo.jar the compiled programs
+      const lib = await cheerpjRunLibrary("/app/rascal-runtime.jar:/app/demo.jar");
+      const WebRunner = await lib.org.rascalmpl.shell.WebRunner;
+      print("Ready. Later runs are faster, once CheerpJ has JIT-compiled the code.\n", "note");
+      button.disabled = false;
+
+      let runs = 0;
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        const module = document.getElementById("module").value;
+        print(`\n--- run ${++runs}: ${module} ---\n`, "note");
+        const start = performance.now();
+        try {
+          print(await WebRunner.run("rascal.$" + module));
+        } catch (err) {
+          print("JS error: " + err + "\n");
+        }
+        print(`[wall clock in browser: ${Math.round(performance.now() - start)} ms]\n`, "note");
+        button.disabled = false;
+      });
+    </script>
+  </body>
+</html>

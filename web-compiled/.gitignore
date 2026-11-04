@@ -1,0 +1,5 @@
+gen/
+bin/
+*.jar
+.classpath.txt
+.sources.txt

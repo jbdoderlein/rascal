@@ -7,6 +7,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -997,7 +998,12 @@ public class PathConfig {
             if (!manifestRoot.getPath().endsWith("pom.xml")) {
                 manifestRoot = URIUtil.getChildLocation(manifestRoot, "pom.xml");
             }
-            var mavenParser = new MavenParser(Path.of(manifestRoot.getURI()));
+            var pomPath = Path.of(manifestRoot.getURI());
+            if (!Files.exists(pomPath)) {
+                // avoid setting up the maven parser (and its http client) for nothing
+                return Collections.emptyList();
+            }
+            var mavenParser = new MavenParser(pomPath);
             var rootProject = mavenParser.parseProject();
             messages.appendAll(rootProject.getMessages());
             var result = rootProject.resolveDependencies(Scope.COMPILE, mavenParser);

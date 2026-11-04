@@ -351,6 +351,7 @@ public class RemoteExternalResolverRegistry implements IExternalResolverRegistry
      * Check if the remote server supports a watch, even if it's partial
      * @return
      */
+    @Override
     public boolean anyWatchSupported() {
         return !getCapability(CapabilitiesResponse::getWatch).isUnsupported();
     }

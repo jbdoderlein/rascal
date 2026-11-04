@@ -59,12 +59,22 @@ rel[Name_Arity, Define] getFunctionsAndConstructors(TModel tmodel, set[MODID] mo
      }
      mname = tmodel.modelName;
 
-     overloads0 = {*{ ov 
+     // some facts are about synthetic trees that are not in any module, such as the `void` return
+     // type the checker uses for closures without one (e.g. `(type[value] _, str _) { throw ""; }`)
+     bool inThisModule(loc u) {
+        try {
+            return getRascalModuleName(u, pcfg) == mname;
+        } catch str _: {
+            return false;
+        }
+     }
+
+     overloads0 = {*{ ov
                     | tuple[loc def, IdRole idRole, AType atype] ov <- ovl.overloads,
-                      (ov.idRole == functionId() || ov.idRole == constructorId()) 
-                    } 
-                  |  loc u <- tmodel.facts, 
-                     getRascalModuleName(u, pcfg) == mname/*jg.isContainedIn(u, mscope)*/, 
+                      (ov.idRole == functionId() || ov.idRole == constructorId())
+                    }
+                  |  loc u <- tmodel.facts,
+                     inThisModule(u)/*jg.isContainedIn(u, mscope)*/,
                      /ovl:overloadedAType(rel[loc def, IdRole idRole, AType atype] overloads) := tmodel.facts[u] 
                   };
      overloads_used_in_module = {<<def.id, size(tp has formals ? tp.formals : tp.fields)>, def>

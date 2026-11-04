@@ -37,13 +37,24 @@ public class ShellEvaluatorFactory {
         var heap = new GlobalEnvironment();
         var root = heap.addModule(new ModuleEnvironment(rootEnvironment, heap));
         var evaluator = new Evaluator(ValueFactoryFactory.getValueFactory(), input, stderr, stdout, root, heap, monitor);
-        try {
-            evaluator.addRascalSearchPath(PathConfig.resolveCurrentStandardLibrary());
-        } catch (IOException e) {
-            monitor.warning("No Rascal runtime found: + " + e.getMessage(), URIUtil.unknownLocation());
-        }
-
+        evaluator.addRascalSearchPath(standardLibrary(monitor));
         return evaluator;
+    }
+
+    /**
+     * The standard library of the rascal jar on the class path; or, when that jar can not be located
+     * or read as a file (e.g. in the browser, under CheerpJ), the same folder read via the class loader.
+     */
+    private static ISourceLocation standardLibrary(IRascalMonitor monitor) {
+        try {
+            var library = PathConfig.resolveCurrentStandardLibrary();
+            if (URIResolverRegistry.getInstance().exists(URIUtil.getChildLocation(library, "Prelude.rsc"))) {
+                return library;
+            }
+        } catch (IOException e) {
+            monitor.warning("No Rascal runtime found: " + e.getMessage() + "; reading the standard library from the class path", URIUtil.unknownLocation());
+        }
+        return URIUtil.correctLocation("resource", "", "/org/rascalmpl/library/");
     }
 
     public static Evaluator getDefaultEvaluator(Reader input, PrintWriter stdout, PrintWriter stderr, IRascalMonitor monitor) {

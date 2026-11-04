@@ -44,7 +44,6 @@ import org.rascalmpl.unicode.UnicodeOffsetLengthReader;
 import org.rascalmpl.unicode.UnicodeOutputStreamWriter;
 import org.rascalmpl.uri.ISourceLocationWatcher.ISourceLocationChanged;
 import org.rascalmpl.uri.classloaders.IClassloaderLocationResolver;
-import org.rascalmpl.uri.remote.RemoteExternalResolverRegistry;
 import org.rascalmpl.uri.watch.WatchRegistry;
 import org.rascalmpl.values.IRascalValueFactory;
 import org.rascalmpl.values.ValueFactoryFactory;
@@ -137,7 +136,7 @@ public class URIResolverRegistry {
 		if (externalRegistry == null) {
 			var registry = createCustomRemoteResolverRegistry(remoteResolverRegistryPort);
 			if (registry == null)  {
-				registry = new RemoteExternalResolverRegistry(remoteResolverRegistryPort);
+				registry = createRemoteResolverRegistry(DEFAULT_REMOTE_RESOLVER_REGISTRY, remoteResolverRegistryPort);
 			}
 			this.externalRegistry = registry;
 			if (registry.anyWatchSupported()) {
@@ -146,14 +145,28 @@ public class URIResolverRegistry {
 		}
 	}
 
-	private synchronized RemoteExternalResolverRegistry createCustomRemoteResolverRegistry(int remoteResolverRegistryPort) {
+	// loaded by name, so that runtimes without the remote registry do not need its (lsp4j) dependencies
+	private static final String DEFAULT_REMOTE_RESOLVER_REGISTRY = "org.rascalmpl.uri.remote.RemoteExternalResolverRegistry";
+
+	private static IExternalResolverRegistry createRemoteResolverRegistry(String className, int remoteResolverRegistryPort) {
+		try {
+			var clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
+			return (IExternalResolverRegistry) clazz.getConstructor(int.class).newInstance(remoteResolverRegistryPort);
+		}
+		catch (ReflectiveOperationException e) {
+			throw new IllegalStateException("Could not create remote resolver registry " + className, e);
+		}
+	}
+
+	private synchronized IExternalResolverRegistry createCustomRemoteResolverRegistry(int remoteResolverRegistryPort) {
 		var customRemoteResolverRegistryClass = System.getProperty("rascal.customRemoteResolverRegistryClass");
 		if (customRemoteResolverRegistryClass != null) {
 			try {
 				var clazz = Thread.currentThread().getContextClassLoader().loadClass(customRemoteResolverRegistryClass);
 				var instance = clazz.getConstructor(int.class).newInstance(remoteResolverRegistryPort);
-				if (instance instanceof RemoteExternalResolverRegistry) {
-					return (RemoteExternalResolverRegistry) instance;
+				var defaultClass = Thread.currentThread().getContextClassLoader().loadClass(DEFAULT_REMOTE_RESOLVER_REGISTRY);
+				if (defaultClass.isInstance(instance)) {
+					return (IExternalResolverRegistry) instance;
 				} else {
 					System.err.println("Provided custom remote resolver registry class name `" + customRemoteResolverRegistryClass
 						+ "` does not derive from RemoteExternalResolverRegistry; using default implementation instead. ");

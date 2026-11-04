@@ -48,7 +48,7 @@ public class BasicIDEServices implements IDEServices {
     this.monitor = monitor;
     this.terminal = terminal;
     this.projectRoot = projectRoot;
-    this.projectName = new RascalManifest().getProjectName(projectRoot);
+    this.projectName = projectRoot == null ? "" : new RascalManifest().getProjectName(projectRoot);
   }
 
   @Override

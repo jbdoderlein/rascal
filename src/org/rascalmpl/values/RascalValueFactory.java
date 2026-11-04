@@ -390,10 +390,20 @@ public class RascalValueFactory extends AbstractValueFactoryAdapter implements I
 		// is `type[what the symbol value represents]`.
 		// So here the symbol value is "unlifted" to the {@see Type} representation (by `symbolToType`). 
 		// Therefore you can count on that, for example, `type(int(), ())` has type `type[int]`.
-		java.util.Map<Type,Type> bindings = 
-		        Collections.singletonMap(RascalValueFactory.TypeParam, tr.symbolToType(symbol, definitions));
-		
-		return super.constructor(RascalValueFactory.Type_Reified.instantiate(bindings), symbol, definitions);
+		Type reified = tr.symbolToType(symbol, definitions);
+
+		// We do not instantiate `type[&T]` with the binding `&T -> reified`: when `reified` itself
+		// contains a type parameter named `T` (e.g. `void(&T)`), that binding is cyclic, and vallang's
+		// ParameterType.instantiate recurses until it catches a StackOverflowError (thousands of frames,
+		// sometimes escaping; under CheerpJ it surfaces as random exceptions). Instead we build the
+		// instantiated constructor type directly, as ConstructorType.instantiate would.
+		TypeStore store = new TypeStore();
+		store.declareAbstractDataType(RascalValueFactory.Type);
+		store.declareConstructor(RascalValueFactory.Type_Reified);
+		Type constructorType = tf.constructorFromTuple(store, RascalTypeFactory.getInstance().reifiedType(reified),
+		    RascalValueFactory.Type_Reified.getName(), RascalValueFactory.Type_Reified.getFieldTypes());
+
+		return super.constructor(constructorType, symbol, definitions);
 	}
 	
 	@Override

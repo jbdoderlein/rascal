@@ -47,4 +47,8 @@ public interface IExternalResolverRegistry extends ISourceLocationInputOutput, I
     boolean supportsWatch(String scheme);
     boolean supportsOutput(String scheme);
     boolean supportsLogical(String scheme);
+
+    default boolean anyWatchSupported() {
+        return false;
+    }
 }

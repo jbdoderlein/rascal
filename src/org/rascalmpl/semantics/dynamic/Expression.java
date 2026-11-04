@@ -105,6 +105,7 @@ import io.usethesource.vallang.IListWriter;
 import io.usethesource.vallang.IMap;
 import io.usethesource.vallang.IMapWriter;
 import io.usethesource.vallang.ISet;
+import io.usethesource.vallang.ITuple;
 import io.usethesource.vallang.ISetWriter;
 import io.usethesource.vallang.ISourceLocation;
 import io.usethesource.vallang.IString;
@@ -2351,6 +2352,23 @@ public abstract class Expression extends org.rascalmpl.ast.Expression {
 	static public class ReifyType extends
 			org.rascalmpl.ast.Expression.ReifyType {
 
+		/**
+		 * Without syntax definitions in the module and its imports, the grammar has no rules that a
+		 * reified type can refer to. Then we skip the parser generator, which is expensive: it loads
+		 * and runs the grammar library in an interpreter of its own (e.g. for every `#T` in
+		 * lang::json::IO's defaultJSONNULLValues).
+		 */
+		private static boolean definesSyntax(Environment env) {
+			IMap modules = ((ModuleEnvironment) env.getRoot()).getSyntaxDefinition();
+			for (IValue module : modules) {
+				ITuple importsExtendsDefs = (ITuple) modules.get(module);
+				if (!((ISet) importsExtendsDefs.get(2)).isEmpty()) {
+					return true;
+				}
+			}
+			return false;
+		}
+
 		public ReifyType(ISourceLocation __param1, IConstructor tree, org.rascalmpl.ast.Type __param2) {
 			super(__param1, tree, __param2);
 		}
@@ -2363,7 +2381,7 @@ public abstract class Expression extends org.rascalmpl.ast.Expression {
 			Type t = getType().typeOf(eval.getCurrentEnvt(), eval, instantiateTypeParameters);
 			IMap gr = eval.__getVf().mapWriter().done();
 			
-			if (!t.isTop()) {
+			if (!t.isTop() && definesSyntax(eval.getCurrentEnvt())) {
 			    // if t == value then let's not call the parser generator.
 			    // the reason is that #value occurs in the parser generator itself
 			    // so this would trigger an infinite cascade of parser generators loading

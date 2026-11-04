@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TodoMVC: Salix in the Browser</title>
+    <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <script src="salix.js"></script>
+    <style>
+      /* lives outside <body>: Salix patches the body's children by position */
+      #perf { position: fixed; right: 8px; bottom: 8px; z-index: 1000; max-width: 360px;
+              background: #222; color: #ddd; font: 12px/1.4 monospace; padding: 8px 10px;
+              border-radius: 4px; opacity: 0.9; white-space: pre-wrap; }
+    </style>
+  <script type="module">
+      // (in <head>: a script after </body> would be moved into the body by the HTML parser)
+      // a panel outside <body> with what the interpreter costs
+      const perf = document.createElement("div");
+      perf.id = "perf";
+      document.documentElement.appendChild(perf);
+      const lines = [];
+      const log = (text) => { lines.push(text); perf.textContent = lines.slice(-12).join("\n"); console.log(text); };
+      const ms = (t) => `${Math.round(performance.now() - t)} ms`;
+      // the shell's calls return null on failure; the Rascal message or Java stack trace is in lastError()
+      const call = async (result) => {
+        if (result === null) {
+          const error = await shell.lastError();
+          log(error);
+          throw new Error(error);
+        }
+        return result;
+      };
+  
+      let t = performance.now();
+      // rascal.jar is built for Java 11 (CheerpJ defaults to Java 8)
+      await cheerpjInit({ version: 11 });
+      // app.jar holds Salix's Rascal sources and the bridge modules, rascal.jar the interpreter
+      // diag.jar: WebDiagnostics, which reports which suspect operations fail under CheerpJ.
+      // Open the page with ?diag to only run that (CheerpJ runs one Java call at a time).
+      const lib = await cheerpjRunLibrary("/app/diag.jar:/app/app.jar:/app/rascal.jar");
+      window.lib = lib;
+      if (new URLSearchParams(location.search).has("diag")) {
+        const report = await (await lib.WebDiagnostics).run();
+        document.getElementById("loading").remove();
+        const pre = document.createElement("pre");
+        pre.textContent = report;
+        document.body.appendChild(pre);
+        console.log(report);
+        log(`diagnostics: ${ms(t)}`);
+        throw new Error("diagnostics only (remove ?diag to run the app)");
+      }
+      const WebShell = await lib.org.rascalmpl.shell.WebShell;
+      window.shell = await new WebShell();
+      await shell.addSearchPath("resource:///rascal-app/");
+      log(`CheerpJ + interpreter: ${ms(t)}`);
+  
+      t = performance.now();
+      const imported = await shell.eval("import TodoWeb;");
+      log(`import TodoWeb (parses Salix): ${ms(t)}`);
+      if (imported.trim() !== "ok") {
+        log(imported);
+        throw new Error(imported);
+      }
+  
+      // what GET / and GET /todoMVC/init do over HTTP
+      t = performance.now();
+      const init = JSON.parse(await call(await shell.call0("init")));
+      log(`init (boot + first render): ${ms(t)}`);
+      document.getElementById("loading").remove();
+      document.body.insertAdjacentHTML("afterbegin", init.body);
+  
+      const salix = new Salix("todoMVC");
+      window.$salix = salix;
+      // what GET /todoMVC/msg?payload=... does over HTTP
+      let messages = 0;
+      salix.sendMessage = async (message) => {
+        const start = performance.now();
+        const json = await call(await shell.call1("message", JSON.stringify(message)));
+        log(`message ${++messages} (${message.type}): ${ms(start)}`);
+        return new Response(json, { headers: { "Content-Type": "application/json" } });
+      };
+      // what salix.start() does after fetching /todoMVC/init
+      salix.bootAliens();
+      salix.step(init);
+      salix.doSome();
+    </script>
+  </head>
+  <!-- <body> belongs to Salix: its patches address the body's children by position -->
+  <body><p id="loading" style="text-align: center">Loading CheerpJ, the Rascal interpreter and Salix...</p></body>
+</html>

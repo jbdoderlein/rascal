@@ -34,16 +34,31 @@ import io.usethesource.vallang.ISourceLocation;
 
 public class HttpURIResolver implements ISourceLocationInput {
 
-	private final HttpClient httpClient = HttpClient.newBuilder()
-		.version(Version.HTTP_2) // upgrade where possible
-		.connectTimeout(Duration.ofSeconds(10))
-		.followRedirects(Redirect.NORMAL) // follow redirects
-		.build();
+	// created on first use: building an HttpClient starts a selector thread, which we
+	// do not want at startup (and which is not available on every JVM, e.g. CheerpJ)
+	private volatile HttpClient httpClient;
+
+	private HttpClient client() {
+		var result = httpClient;
+		if (result == null) {
+			synchronized (this) {
+				result = httpClient;
+				if (result == null) {
+					httpClient = result = HttpClient.newBuilder()
+						.version(Version.HTTP_2) // upgrade where possible
+						.connectTimeout(Duration.ofSeconds(10))
+						.followRedirects(Redirect.NORMAL) // follow redirects
+						.build();
+				}
+			}
+		}
+		return result;
+	}
 
 	@Override
 	public InputStream getInputStream(ISourceLocation uri) throws IOException {
 		try {
-			var response = httpClient.send(
+			var response = client().send(
 				HttpRequest.newBuilder(uri.getURI())
 					.GET()
 					.build()
@@ -167,7 +182,7 @@ public class HttpURIResolver implements ISourceLocationInput {
 				.method("HEAD", BodyPublishers.noBody())
 				.header("Accept-Encoding", "identity") // disable compression of the body, to prevent incorrect sizes
 				.build();
-			var resp = httpClient.send(req, BodyHandlers.discarding());
+			var resp = client().send(req, BodyHandlers.discarding());
 			if (resp.statusCode() != 200) {
 				throw new FileNotFoundException(""  + loc + " does not exist, server replied: " + resp.statusCode());
 			}

@@ -92,6 +92,10 @@ public class RascalExecutionContext implements IRascalMonitor {
 		$TS = new TypeStore();
 		rascalSearchPath = new RascalSearchPath();
 		
+	    if (projectRoot == null) {
+	    	return;
+	    }
+
 	    URIResolverRegistry reg = URIResolverRegistry.getInstance();
 	    String projectName = new RascalManifest().getProjectName(projectRoot);
 	    if(!projectName.isEmpty()) {
@@ -205,7 +209,8 @@ public class RascalExecutionContext implements IRascalMonitor {
 	        try {
 	            String file = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
 	            if (file.endsWith(".jar")) {
-	                throw new IllegalArgumentException("can not run Rascal JUnit tests from within a jar file");
+	                // a deployed program has no project to find sources in
+	                return null;
 	            }
 
 	            File current = new File(file);

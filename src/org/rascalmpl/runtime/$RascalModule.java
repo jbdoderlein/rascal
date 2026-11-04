@@ -29,6 +29,7 @@ package org.rascalmpl.runtime;
 import static org.rascalmpl.values.RascalValueFactory.TYPE_STORE_SUPPLIER;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.Constructor;
@@ -461,18 +462,15 @@ public abstract class $RascalModule {
 		// The constants file has the structure: <int nconstants, str md5Hash, list[value] constants>
     	Type constantsFileType = $TF.tupleType($TF.integerType(), $TF.stringType(), $TF.listType($TF.valueType()));
     	
-		ISourceLocation loc = null; 
-		try {
-			URL url = c.getClassLoader().getResource(path);
-			if(url == null) {
-				throw RuntimeExceptionFactory.io($RVF.string("Cannot find resource " + path));
-			}
-			loc = $RVF.sourceLocation(url.toURI());
-		} catch (URISyntaxException e) {
-			System.err.println("readBinaryConstantsFile: " + path + " throws " + e.getMessage());
+		// read via the class loader, so this also works for classes loaded from a jar
+		// (whose resource URLs are opaque jar:file:...!/ URIs)
+		String loc = path;
+		InputStream resource = c.getClassLoader().getResourceAsStream(path);
+		if(resource == null) {
+			throw RuntimeExceptionFactory.io($RVF.string("Cannot find resource " + path));
 		}
 
-    	try (IValueInputStream in = constructValueReader(loc)) {
+    	try (IValueInputStream in = new IValueInputStream(resource, $RVF, TYPE_STORE_SUPPLIER)) {
     		IValue constantsFile = in.read();;
     		if(constantsFile.getType().isSubtypeOf(constantsFileType)){
     			ITuple tup = (ITuple)constantsFile;
@@ -484,14 +482,6 @@ public abstract class $RascalModule {
     			if(!found_hash.equals(expected_md5Hash)) {
     				throw RuntimeExceptionFactory.io($RVF.string("Expected md5Hash " + expected_md5Hash + ", but got " + found_hash + " for " + path));
     			}
-				IList lst = (IList) tup.get(2);
-				for(int i = 0; i < found_length; i++){
-					IValue cnst = lst.get(i);
-					if(cnst.getType().isConstructor()){
-						IConstructor cons = (IConstructor) cnst;
-						System.err.println(i + ": " + cons + ", " + cons.getConstructorType());
-					}
-				}
     			return (IList) tup.get(2);
     		} else {
     			throw RuntimeExceptionFactory.io($RVF.string("Requested type " + constantsFileType + ", but found " + constantsFile.getType()));
@@ -507,16 +497,6 @@ public abstract class $RascalModule {
 		}
 	}
 
-    private IValueInputStream constructValueReader(ISourceLocation loc) throws IOException {
-        URIResolverRegistry registry = URIResolverRegistry.getInstance();
-        if (registry.supportsReadableFileChannel(loc)) {
-            FileChannel channel = registry.getReadableFileChannel(loc);
-            if (channel != null) {
-                return new IValueInputStream(channel, $RVF, TYPE_STORE_SUPPLIER);
-            }
-        }
-        return new IValueInputStream(registry.getInputStream(loc), $RVF, TYPE_STORE_SUPPLIER);
-    }
 	
 	/*************************************************************************/
 	/*		Rascal primitives called by generated code						 */
